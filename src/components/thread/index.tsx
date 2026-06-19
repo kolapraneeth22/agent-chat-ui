@@ -123,8 +123,6 @@ export function Thread() {
 
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
-
-    // close artifact and reset artifact context
     closeArtifact();
     setArtifactContext({});
   };
@@ -136,12 +134,8 @@ export function Thread() {
     }
     try {
       const message = (stream.error as any).message;
-      if (!message || lastError.current === message) {
-        // Message has already been logged. do not modify ref, return early.
-        return;
-      }
+      if (!message || lastError.current === message) return;
 
-      // Message is defined, and it has not been logged yet. Save it, and send the error
       lastError.current = message;
       toast.error("An error occurred. Please try again.", {
         description: (
@@ -157,7 +151,6 @@ export function Thread() {
     }
   }, [stream.error]);
 
-  // TODO: this should be part of the useStream hook
   const prevMessageLength = useRef(0);
   useEffect(() => {
     if (
@@ -167,7 +160,6 @@ export function Thread() {
     ) {
       setFirstTokenReceived(true);
     }
-
     prevMessageLength.current = messages.length;
   }, [messages]);
 
@@ -187,9 +179,7 @@ export function Thread() {
     };
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
-
-    const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
+    const context = Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
 
     stream.submit(
       { messages: [...toolMessages, newHumanMessage], context },
@@ -213,10 +203,7 @@ export function Thread() {
     setContentBlocks([]);
   };
 
-  const handleRegenerate = (
-    parentCheckpoint: Checkpoint | null | undefined,
-  ) => {
-    // Do this so the loading state is correct
+  const handleRegenerate = (parentCheckpoint: Checkpoint | null | undefined) => {
     prevMessageLength.current = prevMessageLength.current - 1;
     setFirstTokenReceived(false);
     stream.submit(undefined, {
@@ -236,23 +223,26 @@ export function Thread() {
     <div className="flex h-screen w-full overflow-hidden">
       <div className="relative hidden lg:flex">
         <motion.div
-          className="absolute z-20 h-full overflow-hidden border-r bg-white"
-          style={{ width: 300 }}
+          // FIXED: Removed 'border-r bg-white' so there are no outer lines/background mismatches blocking the sidebar width frame.
+          className="absolute z-20 h-full overflow-hidden"
+          // FIXED: Adjusted layout geometry parameters to perfectly mirror your 280px history frame constraints
+          style={{ width: 280 }}
           animate={
             isLargeScreen
-              ? { x: chatHistoryOpen ? 0 : -300 }
-              : { x: chatHistoryOpen ? 0 : -300 }
+              ? { x: chatHistoryOpen ? 0 : -280 }
+              : { x: chatHistoryOpen ? 0 : -280 }
           }
-          initial={{ x: -300 }}
+          initial={{ x: -280 }}
           transition={
             isLargeScreen
               ? { type: "spring", stiffness: 300, damping: 30 }
               : { duration: 0 }
           }
         >
+          {/* FIXED: Scaled nested viewport framework width to match 280px exactly */}
           <div
             className="relative h-full"
-            style={{ width: 300 }}
+            style={{ width: 280 }}
           >
             <ThreadHistory />
           </div>
@@ -271,11 +261,12 @@ export function Thread() {
             !chatStarted && "grid-rows-[1fr]",
           )}
           layout={isLargeScreen}
+          // FIXED: Mapped dynamic offsetting margins and calculation boundaries from 300px down to 280px
           animate={{
-            marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
+            marginLeft: chatHistoryOpen ? (isLargeScreen ? 280 : 0) : 0,
             width: chatHistoryOpen
               ? isLargeScreen
-                ? "calc(100% - 300px)"
+                ? "calc(100% - 280px)"
                 : "100%"
               : "100%",
           }}
@@ -285,25 +276,6 @@ export function Thread() {
               : { duration: 0 }
           }
         >
-          {/* {!chatStarted && (
-            <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4">
-              <div>
-                    {(!chatHistoryOpen || !isLargeScreen) && (
-                  <Button
-                    className="hover:bg-gray-100"
-                    variant="ghost"
-                    onClick={() => setChatHistoryOpen((p) => !p)}
-                  >
-                    {chatHistoryOpen ? (
-                      <PanelLeftClose className="size-5" />
-                    ) : (
-                      <PanelLeftOpen className="size-5" />
-                    )}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )} */}
           {chatStarted && (
             <div className="relative z-10 flex items-center justify-between gap-3 p-2">
               <div className="relative flex items-center justify-start gap-2">
@@ -334,10 +306,6 @@ export function Thread() {
                     damping: 30,
                   }}
                 >
-                  {/* <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  /> */}
                   <span className="text-xl font-semibold tracking-tight">
                     Agent Chat
                   </span>
@@ -345,9 +313,6 @@ export function Thread() {
               </div>
 
               <div className="flex items-center gap-4">
-                {/* <div className="flex items-center">
-                  <OpenGitHubRepo />
-                </div> */}
                 <TooltipIconButton
                   size="lg"
                   className="p-4"
@@ -391,8 +356,6 @@ export function Thread() {
                         />
                       ),
                     )}
-                  {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
-                    We need to render it outside of the messages list, since there are no messages to render */}
                   {hasNoAIOrToolMessages && !!stream.interrupt && (
                     <AssistantMessage
                       key="interrupt-msg"
@@ -410,7 +373,6 @@ export function Thread() {
                 <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
-                      {/* <LangGraphLogoSVG className="h-8 flex-shrink-0" /> */}
                       <h1 className="text-2xl font-semibold tracking-tight">
                         Infy Infra Agent
                       </h1>
@@ -422,14 +384,12 @@ export function Thread() {
                   <div
                     ref={dropRef}
                     className={cn(
-                      // Changed bg-muted to a sleek AT&T gradient and added a subtle translucent border
                       "relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl bg-gradient-to-r from-[#0057B8] to-[#00A6CA] p-[1px] shadow-lg transition-all",
                       dragOver
                         ? "border-2 border-dotted border-white"
                         : "border border-white/10",
                     )}
                   >
-                    {/* Inner wrapper to keep the form clean and organized */}
                     <form
                       onSubmit={handleSubmit}
                       className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2 rounded-[15px] bg-gradient-to-r from-[#0057B8] to-[#00A6CA]"
@@ -457,12 +417,10 @@ export function Thread() {
                           }
                         }}
                         placeholder="Type your message..."
-                        // Added text-white and placeholder:text-white/60 for clean legibility over the gradient
                         className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 text-white placeholder:text-white/60 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 
                       <div className="flex items-center gap-6 p-2 pt-4">
-
                         {stream.isLoading ? (
                           <Button
                             key="stop"
@@ -475,7 +433,6 @@ export function Thread() {
                         ) : (
                           <Button
                             type="submit"
-                            // Made the button pop against the blue background using standard crisp white
                             className="ml-auto bg-white text-[#0057B8] font-medium shadow-md transition-all hover:bg-white/90 disabled:bg-white/50 disabled:text-[#0057B8]/70"
                             disabled={
                               isLoading ||
